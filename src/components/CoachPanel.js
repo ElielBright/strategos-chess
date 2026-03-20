@@ -26,19 +26,29 @@ export default function CoachPanel({ game, moveHistory, playerColor = "w", onSug
       const status = await checkOllamaStatus();
       setOllamaStatus(status);
 
-      if (!status.available) {
-        setError("Cannot connect to Ollama. Make sure it's running (ollama serve).");
-        setLoading(false);
-        return;
-      }
-
-      if (!status.hasQwen) {
-        setError("Qwen 2.5:3b model not found. Run: ollama pull qwen2.5:3b");
-        setLoading(false);
-        return;
-      }
-
+      const engineMoveObj = new Chess();
+      engineMoveObj.loadPgn(game.pgn());
       const engineMove = getComputerMove(game, "strategist");
+
+      if (!status.available || !status.hasQwen) {
+        setSuggestion({
+          move: engineMove,
+          explanation: status.available 
+            ? "Ollama is running, but the Qwen model is missing. However, the Strategist engine still recommends this move."
+            : "The Oracle is currently disconnected (Ollama is offline). However, the internal Strategist still highly recommends this move."
+        });
+        
+        // Pass to parent for highlighting
+        if (onSuggest) {
+          const moveObj = engineMoveObj.move(engineMove);
+          if (moveObj) {
+            onSuggest({ from: moveObj.from, to: moveObj.to });
+          }
+        }
+        setLoading(false);
+        return;
+      }
+
       const result = await askOracle(game.fen(), moveHistory, playerColor, engineMove);
       setSuggestion(result);
 
