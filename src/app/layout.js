@@ -38,13 +38,13 @@ export default function RootLayout({ children }) {
   ];
 
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <head>
         <title>Strategos — Chess Strategist</title>
         <meta name="description" content="A Greek-themed AI-powered chess game" />
         <link rel="icon" href="/logo.png" />
       </head>
-      <body>
+      <body suppressHydrationWarning>
         <UserContext.Provider value={{ username, setUsername, setShowUsernameModal }}>
           {/* Navbar */}
           <nav className="navbar">
