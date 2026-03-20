@@ -16,6 +16,8 @@ export default function ChessBoard({
   playerColor = "w",
   disabled = false,
   lastMove = null,
+  theme = "classic",
+  coachHighlight = null,
 }) {
   const [selectedSquare, setSelectedSquare] = useState(null);
   const [legalMoves, setLegalMoves] = useState([]);
@@ -219,12 +221,14 @@ export default function ChessBoard({
         const isCheck = kingSquare === square;
         const hasPiece = piece !== null;
         const isDragging = dragPiece === square;
+        const isCoachHighlight = coachHighlight && (square === coachHighlight.from || square === coachHighlight.to);
 
         let className = `square ${isLight ? "light" : "dark"}`;
         if (isSelected) className += " selected";
         if (isLegal && hasPiece) className += " legal-capture";
         else if (isLegal) className += " legal-move";
         if (isLastMove) className += " last-move";
+        if (isCoachHighlight) className += " coach-highlight";
         if (isCheck) className += " in-check";
 
         squares.push(
@@ -249,7 +253,7 @@ export default function ChessBoard({
 
             {/* Piece */}
             {piece && !isDragging && (
-              <span className="piece">
+              <span className={`piece piece-${piece.color}`}>
                 {PIECES[piece.color + piece.type]}
               </span>
             )}
@@ -263,12 +267,12 @@ export default function ChessBoard({
 
   return (
     <div className="board-wrapper" ref={boardRef}>
-      <div className="board-container">{renderBoard()}</div>
+      <div className={`board-container theme-${theme}`}>{renderBoard()}</div>
 
       {/* Dragging piece */}
       {dragPiece && game.get(dragPiece) && (
         <span
-          className="piece dragging"
+          className={`piece dragging piece-${game.get(dragPiece).color}`}
           style={{
             left: dragPos.x - 28,
             top: dragPos.y - 28,
@@ -292,7 +296,7 @@ export default function ChessBoard({
           {["q", "r", "b", "n"].map((p) => (
             <div
               key={p}
-              className="promotion-option"
+              className={`promotion-option piece-${turn}`}
               onClick={() => handlePromotion(p)}
             >
               {PIECES[(turn) + p]}

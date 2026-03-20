@@ -1,10 +1,11 @@
 "use client";
-import { useState, useContext } from "react";
 import { UserContext } from "@/app/layout";
 import { hasOracleAccess } from "@/lib/accessControl";
 import { askOracle, checkOllamaStatus } from "@/lib/ollamaClient";
+import { getComputerMove } from "@/lib/engine";
+import { Chess } from "chess.js";
 
-export default function CoachPanel({ game, moveHistory }) {
+export default function CoachPanel({ game, moveHistory, playerColor = "w", onSuggest }) {
   const { username } = useContext(UserContext);
   const [loading, setLoading] = useState(false);
   const [suggestion, setSuggestion] = useState(null);
@@ -37,8 +38,22 @@ export default function CoachPanel({ game, moveHistory }) {
         return;
       }
 
-      const result = await askOracle(game.fen(), moveHistory);
+      const engineMove = getComputerMove(game, "strategist");
+      const result = await askOracle(game.fen(), moveHistory, playerColor, engineMove);
       setSuggestion(result);
+
+      if (result.move && onSuggest) {
+        try {
+          const tempGame = new Chess();
+          tempGame.loadPgn(game.pgn());
+          const moveObj = tempGame.move(result.move);
+          if (moveObj) {
+            onSuggest({ from: moveObj.from, to: moveObj.to });
+          }
+        } catch (e) {
+          // ignore parsing errors
+        }
+      }
     } catch (err) {
       setError(err.message);
     } finally {

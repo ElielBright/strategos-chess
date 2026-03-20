@@ -29,6 +29,8 @@ function PlayContent() {
   const [difficulty, setDifficulty] = useState("scholar");
   const [playerColor, setPlayerColor] = useState("w");
   const [isThinking, setIsThinking] = useState(false);
+  const [boardTheme, setBoardTheme] = useState("classic");
+  const [coachHighlight, setCoachHighlight] = useState(null);
   const gameRef = useRef(game);
 
   useEffect(() => {
@@ -99,6 +101,7 @@ function PlayContent() {
   }, [checkGameOver]);
 
   const handleMove = useCallback((moveObj) => {
+    setCoachHighlight(null);
     const freshGame = new Chess();
     freshGame.loadPgn(game.pgn());
 
@@ -137,6 +140,7 @@ function PlayContent() {
   }, [game, gameMode, difficulty, makeComputerMove, checkGameOver]);
 
   const startNewGame = useCallback(() => {
+    setCoachHighlight(null);
     const newGame = new Chess();
     setGame(newGame);
     setMoveHistory([]);
@@ -198,53 +202,69 @@ function PlayContent() {
             </div>
           </div>
 
-          {gameMode === "computer" && (
-            <>
-              <div className="modal-group">
-                <label>Difficulty</label>
-                <div className="difficulty-options">
-                  {[
-                    { id: "novice", icon: "🟢", name: "Novice", desc: "Random moves — great for beginners" },
-                    { id: "scholar", icon: "🟡", name: "Scholar", desc: "Basic strategy — decent challenge" },
-                    { id: "strategist", icon: "🟠", name: "Strategist", desc: "Deep thinking — minimax engine" },
-                    { id: "oracle", icon: "🔮", name: "Oracle", desc: "AI-powered — uses Qwen 2.5:3b" },
-                  ].map((d) => (
-                    <div
-                      key={d.id}
-                      className={`difficulty-option ${difficulty === d.id ? "selected" : ""}`}
-                      onClick={() => setDifficulty(d.id)}
-                    >
-                      <span className="diff-icon">{d.icon}</span>
-                      <div className="diff-info">
-                        <h4>{d.name}</h4>
-                        <p>{d.desc}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
+          <div className="modal-group">
+            <label>Board Theme</label>
+            <select 
+              value={boardTheme} 
+              onChange={(e) => setBoardTheme(e.target.value)}
+              style={{ width: '100%', padding: '10px', borderRadius: '6px', background: 'var(--bg-tertiary)', color: 'var(--text-primary)', border: '1px solid var(--border-subtle)', marginTop: '8px', fontSize: '0.95rem' }}
+            >
+              <option value="classic">Classic Wood</option>
+              <option value="tournament">Tournament Green</option>
+              <option value="marble">Marble</option>
+              <option value="walnut">Walnut</option>
+              <option value="midnight">Midnight</option>
+              <option value="forest">Forest</option>
+              <option value="ocean">Ocean</option>
+              <option value="neon">Neon Cyber</option>
+            </select>
+          </div>
 
-              <div className="modal-group">
-                <label>Your Color</label>
-                <div className="color-options">
+          {gameMode === "computer" && (
+            <div className="modal-group">
+              <label>Difficulty</label>
+              <div className="difficulty-options">
+                {[
+                  { id: "novice", icon: "🟢", name: "Novice", desc: "Random moves — great for beginners" },
+                  { id: "scholar", icon: "🟡", name: "Scholar", desc: "Basic strategy — decent challenge" },
+                  { id: "strategist", icon: "🟠", name: "Strategist", desc: "Deep thinking — minimax engine" },
+                  { id: "oracle", icon: "🔮", name: "Oracle", desc: "AI-powered — uses Qwen 2.5:3b" },
+                ].map((d) => (
                   <div
-                    className={`color-option ${playerColor === "w" ? "selected" : ""}`}
-                    onClick={() => setPlayerColor("w")}
+                    key={d.id}
+                    className={`difficulty-option ${difficulty === d.id ? "selected" : ""}`}
+                    onClick={() => setDifficulty(d.id)}
                   >
-                    <span className="color-icon">♔</span>
-                    White
+                    <span className="diff-icon">{d.icon}</span>
+                    <div className="diff-info">
+                      <h4>{d.name}</h4>
+                      <p>{d.desc}</p>
+                    </div>
                   </div>
-                  <div
-                    className={`color-option ${playerColor === "b" ? "selected" : ""}`}
-                    onClick={() => setPlayerColor("b")}
-                  >
-                    <span className="color-icon">♚</span>
-                    Black
-                  </div>
-                </div>
+                ))}
               </div>
-            </>
+            </div>
           )}
+
+          <div className="modal-group">
+            <label>Your Color (Bottom Side)</label>
+            <div className="color-options">
+              <div
+                className={`color-option ${playerColor === "w" ? "selected" : ""}`}
+                onClick={() => setPlayerColor("w")}
+              >
+                <span className="color-icon">♔</span>
+                White
+              </div>
+              <div
+                className={`color-option ${playerColor === "b" ? "selected" : ""}`}
+                onClick={() => setPlayerColor("b")}
+              >
+                <span className="color-icon">♚</span>
+                Black
+              </div>
+            </div>
+          </div>
 
           <div className="modal-actions">
             <button className="btn btn-primary btn-lg" onClick={startNewGame} style={{ width: "100%" }}>
@@ -284,24 +304,31 @@ function PlayContent() {
         </div>
 
         {/* Coach Panel (only for authorized users) */}
-        <CoachPanel game={game} moveHistory={moveHistory} />
+        <CoachPanel 
+          game={game} 
+          moveHistory={moveHistory} 
+          playerColor={playerColor}
+          onSuggest={setCoachHighlight}
+        />
       </div>
 
       {/* Center — Board */}
       <div>
-        {isThinking && (
-          <div className="status-bar" style={{ marginBottom: 12 }}>
-            <span className="spinner" style={{ marginRight: 8 }}></span>
+        <div style={{ minHeight: '44px', marginBottom: 12 }}>
+          <div className="status-bar" style={{ visibility: isThinking ? 'visible' : 'hidden' }}>
+            <span className="spinner" style={{ marginRight: 8, display: 'inline-block', verticalAlign: 'middle' }}></span>
             {difficulty === "oracle" ? "Oracle is consulting the cosmos..." : "Engine is thinking..."}
           </div>
-        )}
+        </div>
 
         <ChessBoard
           game={game}
           onMove={handleMove}
-          playerColor={gameMode === "computer" ? playerColor : "w"}
+          playerColor={playerColor}
           disabled={!isPlayerTurn || isThinking || !!gameOver}
           lastMove={lastMove}
+          theme={boardTheme}
+          coachHighlight={coachHighlight}
         />
 
         {/* Game status */}

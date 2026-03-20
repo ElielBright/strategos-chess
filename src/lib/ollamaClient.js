@@ -10,20 +10,32 @@ const OLLAMA_URL = process.env.NEXT_PUBLIC_OLLAMA_URL || "http://localhost:11434
  * @param {string[]} moveHistory - Array of moves in algebraic notation
  * @returns {Promise<{move: string, explanation: string}>}
  */
-export async function askOracle(fen, moveHistory = []) {
+export async function askOracle(fen, moveHistory = [], playerColor = "w", engineMove = null) {
   const historyStr = moveHistory.length > 0
     ? `\nMoves played so far: ${moveHistory.join(", ")}`
     : "";
 
-  const prompt = `You are a chess grandmaster advisor. Analyze this chess position and suggest the best move.
+  const pColor = playerColor === "w" ? "White" : "Black";
+  
+  let prompt;
+  if (engineMove) {
+    prompt = `You are a chess grandmaster advisor. The human player is playing as ${pColor}. The best move in the current position is ${engineMove}.
+Explain in 1-2 brief sentences WHY ${engineMove} is a strong positional or tactical move.
+
+Respond in this exact format:
+MOVE: ${engineMove}
+EXPLANATION: [Brief 1-2 sentence explanation here]`;
+  } else {
+    prompt = `You are a chess grandmaster advisor. The human player is playing as ${pColor}. Analyze this chess position and suggest the best move for the side currently to move.
 
 Current position (FEN): ${fen}${historyStr}
 
 Respond in this exact format:
-MOVE: [your suggested move in standard algebraic notation, e.g. e4, Nf3, Bxc6]
+MOVE: [your suggested move in standard algebraic notation]
 EXPLANATION: [Brief 1-2 sentence explanation of why this is the best move]
 
-Be concise. Only suggest legal moves for the side to move.`;
+Be concise. Only suggest legal moves.`;
+  }
 
   try {
     const response = await fetch(`${OLLAMA_URL}/api/generate`, {

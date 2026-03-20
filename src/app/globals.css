@@ -14,13 +14,19 @@
   --gold-dark: #9c7c2e;
   --gold-glow: rgba(212, 168, 67, 0.3);
 
-  /* Board colors */
+  /* Default Board colors (Classic) */
   --board-light: #e8dcc8;
   --board-dark: #7a6652;
   --board-highlight: rgba(212, 168, 67, 0.5);
   --board-legal: rgba(212, 168, 67, 0.35);
   --board-check: rgba(255, 50, 50, 0.5);
   --board-last-move: rgba(212, 168, 67, 0.25);
+
+  /* Piece colors */
+  --piece-white: #f0ead6;
+  --piece-white-stroke: #2a2519;
+  --piece-black: #1a1510;
+  --piece-black-stroke: #a09580;
 
   /* Text */
   --text-primary: #e8e0d4;
@@ -60,6 +66,79 @@
   margin: 0;
   padding: 0;
   box-sizing: border-box;
+}
+
+/* Themes */
+.theme-classic {
+  --board-light: #e8dcc8;
+  --board-dark: #7a6652;
+  --piece-white: #f0ead6;
+  --piece-white-stroke: #2a2519;
+  --piece-black: #1a1510;
+  --piece-black-stroke: #a09580;
+}
+
+.theme-tournament {
+  --board-light: #eeeed2;
+  --board-dark: #769656;
+  --piece-white: #ffffff;
+  --piece-white-stroke: #222222;
+  --piece-black: #222222;
+  --piece-black-stroke: #ffffff;
+}
+
+.theme-marble {
+  --board-light: #e8eaed;
+  --board-dark: #8c92ac;
+  --piece-white: #fcfcfc;
+  --piece-white-stroke: #808080;
+  --piece-black: #333333;
+  --piece-black-stroke: #999999;
+}
+
+.theme-walnut {
+  --board-light: #dac3a3;
+  --board-dark: #8b5a2b;
+  --piece-white: #ffe4c4;
+  --piece-white-stroke: #5c3a21;
+  --piece-black: #3e2723;
+  --piece-black-stroke: #d7ccc8;
+}
+
+.theme-midnight {
+  --board-light: #495057;
+  --board-dark: #212529;
+  --piece-white: #e9ecef;
+  --piece-white-stroke: #121416;
+  --piece-black: #343a40;
+  --piece-black-stroke: #adb5bd;
+}
+
+.theme-forest {
+  --board-light: #e2e8ce;
+  --board-dark: #5c715e;
+  --piece-white: #f0f4e3;
+  --piece-white-stroke: #2e382f;
+  --piece-black: #1d2b1f;
+  --piece-black-stroke: #a4bfa6;
+}
+
+.theme-ocean {
+  --board-light: #d8e2dc;
+  --board-dark: #457b9d;
+  --piece-white: #f1faee;
+  --piece-white-stroke: #1d3557;
+  --piece-black: #1d3557;
+  --piece-black-stroke: #a8dadc;
+}
+
+.theme-neon {
+  --board-light: #2a0a2a;
+  --board-dark: #0a0a2a;
+  --piece-white: #ff00ff;
+  --piece-white-stroke: #ffffff;
+  --piece-black: #00ffff;
+  --piece-black-stroke: #ffffff;
 }
 
 html, body {
@@ -483,6 +562,11 @@ html, body {
   background-color: var(--board-last-move) !important;
 }
 
+.square.coach-highlight {
+  background-color: rgba(168, 85, 247, 0.4) !important;
+  box-shadow: inset 0 0 12px rgba(168, 85, 247, 0.7);
+}
+
 .square.in-check {
   background: var(--board-check) !important;
   animation: check-pulse 1s ease-in-out infinite;
@@ -517,14 +601,23 @@ html, body {
   color: var(--bg-primary);
 }
 
-/* Piece */
 .piece {
   font-size: 2.8em;
   line-height: 1;
   cursor: grab;
   z-index: 2;
   transition: transform var(--transition-fast);
-  filter: drop-shadow(1px 2px 2px rgba(0,0,0,0.4));
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));
+}
+
+.piece-w {
+  color: var(--piece-white);
+  -webkit-text-stroke: 1px var(--piece-white-stroke);
+}
+
+.piece-b {
+  color: var(--piece-black);
+  -webkit-text-stroke: 1px var(--piece-black-stroke);
 }
 
 .piece:active {
@@ -537,7 +630,7 @@ html, body {
   z-index: 1000;
   pointer-events: none;
   transform: scale(1.15);
-  filter: drop-shadow(2px 6px 8px rgba(0,0,0,0.5));
+  filter: drop-shadow(0 8px 12px rgba(0,0,0,0.6));
 }
 
 /* ========= PANELS ========= */

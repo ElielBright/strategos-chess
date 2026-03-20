@@ -111,7 +111,7 @@ function minimax(game, depth, alpha, beta, maximizing) {
     return evaluateBoard(game);
   }
 
-  const moves = game.moves();
+  const moves = orderMoves(game, game.moves());
 
   if (maximizing) {
     let maxEval = -Infinity;
@@ -142,7 +142,7 @@ function minimax(game, depth, alpha, beta, maximizing) {
  * Order moves to improve alpha-beta pruning
  */
 function orderMoves(game, moves) {
-  return moves.sort((a, b) => {
+  return [...moves].sort((a, b) => {
     const moveA = game.move(a);
     game.undo();
     const moveB = game.move(b);
@@ -194,15 +194,14 @@ function getScholarMove(game) {
  * STRATEGIST (Hard) — Minimax with alpha-beta, depth 3
  */
 function getStrategistMove(game) {
-  const moves = game.moves();
-  const ordered = orderMoves(game, [...moves]);
+  const moves = orderMoves(game, game.moves());
 
-  let bestMove = ordered[0];
+  let bestMove = moves[0];
   let bestScore = -Infinity;
 
-  for (const move of ordered) {
+  for (const move of moves) {
     game.move(move);
-    const score = -minimax(game, 2, -Infinity, Infinity, false);
+    const score = -minimax(game, 3, -Infinity, Infinity, false);
     game.undo();
 
     if (score > bestScore) {
