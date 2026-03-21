@@ -178,8 +178,13 @@ function PlayContent() {
   if (showSetup) {
     return (
       <div className="modal-overlay">
-        <div className="modal">
-          <h2>⚔️ New Game</h2>
+        <div className="modal" style={{ position: 'relative' }}>
+          <button 
+             onClick={() => setShowSetup(false)} 
+             style={{ position: 'absolute', top: 12, right: 16, background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer', color: 'var(--text-dim)' }}
+             title="Close"
+          >×</button>
+          <h2>⚔ New Game</h2>
           <p>Configure your battle</p>
 
           <div className="modal-group">
@@ -189,14 +194,14 @@ function PlayContent() {
                 className={`color-option ${gameMode === "local" ? "selected" : ""}`}
                 onClick={() => setGameMode("local")}
               >
-                <span className="color-icon">👥</span>
+                <span className="color-icon">⚔</span>
                 Local
               </div>
               <div
                 className={`color-option ${gameMode === "computer" ? "selected" : ""}`}
                 onClick={() => setGameMode("computer")}
               >
-                <span className="color-icon">🤖</span>
+                <span className="color-icon">⛊</span>
                 Computer
               </div>
             </div>
@@ -225,10 +230,10 @@ function PlayContent() {
               <label>Difficulty</label>
               <div className="difficulty-options">
                 {[
-                  { id: "novice", icon: "🟢", name: "Novice", desc: "Random moves — great for beginners" },
-                  { id: "scholar", icon: "🟡", name: "Scholar", desc: "Basic strategy — decent challenge" },
-                  { id: "strategist", icon: "🟠", name: "Strategist", desc: "Deep thinking — minimax engine" },
-                  { id: "oracle", icon: "🔮", name: "Oracle", desc: "AI-powered — uses Qwen 2.5:3b" },
+                  { id: "novice", icon: "◉", name: "Novice", desc: "Random moves — great for beginners" },
+                  { id: "scholar", icon: "◈", name: "Scholar", desc: "Basic strategy — decent challenge" },
+                  { id: "strategist", icon: "⬥", name: "Strategist", desc: "Deep thinking — minimax engine" },
+                  { id: "oracle", icon: "◆", name: "Oracle", desc: "AI-powered — uses Qwen 2.5:3b" },
                 ].map((d) => (
                   <div
                     key={d.id}
@@ -268,7 +273,7 @@ function PlayContent() {
 
           <div className="modal-actions">
             <button className="btn btn-primary btn-lg" onClick={startNewGame} style={{ width: "100%" }}>
-              ⚔️ Start Battle
+              ⚔ Start Battle
             </button>
           </div>
         </div>
@@ -284,7 +289,7 @@ function PlayContent() {
         <div className="panel">
           <div className="player-info">
             <div className={`player-avatar ${playerColor === "w" ? "black-player" : "white-player"}`}>
-              {gameMode === "computer" ? "🤖" : (playerColor === "w" ? "♚" : "♔")}
+              {gameMode === "computer" ? "⛊" : (playerColor === "w" ? "♚" : "♔")}
             </div>
             <div>
               <div className="player-name">{getPlayerName(playerColor === "w" ? "b" : "w")}</div>
@@ -317,7 +322,7 @@ function PlayContent() {
         <div style={{ minHeight: '44px', marginBottom: 12 }}>
           <div className="status-bar" style={{ visibility: isThinking ? 'visible' : 'hidden' }}>
             <span className="spinner" style={{ marginRight: 8, display: 'inline-block', verticalAlign: 'middle' }}></span>
-            {difficulty === "oracle" ? "Oracle is consulting the cosmos..." : "Engine is thinking..."}
+            {difficulty === "oracle" ? "Oracle is consulting the cosmos..." : "Engine is calculating..."}
           </div>
         </div>
 
@@ -341,7 +346,7 @@ function PlayContent() {
         {/* Controls */}
         <div className="panel" style={{ marginTop: 12 }}>
           <div className="game-controls">
-            <button onClick={() => setShowSetup(true)} title="New Game">🆕</button>
+            <button onClick={() => setShowSetup(true)} title="New Game">✦</button>
             <button onClick={() => {
               const g = new Chess();
               g.loadPgn(game.pgn());
@@ -358,11 +363,11 @@ function PlayContent() {
               setMoveHistory(newGame.history());
               // Reset last move indication since it's hard to get safely
               setLastMove(null);
-            }} title="Undo" disabled={moveHistory.length === 0}>⬅️</button>
-            <button onClick={resignGame} title="Resign" disabled={!!gameOver}>🏳️</button>
+            }} title="Undo" disabled={moveHistory.length === 0}>↶</button>
+            <button onClick={resignGame} title="Resign" disabled={!!gameOver}>⚐</button>
             <button onClick={() => {
               navigator.clipboard?.writeText(game.fen());
-            }} title="Copy FEN">📋</button>
+            }} title="Copy FEN">⧉</button>
           </div>
         </div>
       </div>
@@ -402,8 +407,8 @@ function PlayContent() {
         <div className="game-over-overlay">
           <div className="game-over-modal">
             <div className="result-icon">
-              {gameOver.type === "checkmate" ? "👑" :
-               gameOver.type === "resign" ? "🏳️" : "🤝"}
+              {gameOver.type === "checkmate" ? "♛" :
+               gameOver.type === "resign" ? "⚐" : "⚖"}
             </div>
             <h2>{gameOver.type === "checkmate" ? "Checkmate!" :
                  gameOver.type === "resign" ? "Resignation" : "Draw"}</h2>
@@ -416,14 +421,14 @@ function PlayContent() {
                   setShowSetup(true);
                 }}
               >
-                🔄 New Game
+                ↻ New Game
               </button>
               <button
                 className="btn btn-ghost"
                 onClick={() => setGameOver(null)}
                 style={{ marginLeft: 12 }}
               >
-                📋 Review
+                ⧉ Review
               </button>
             </div>
           </div>

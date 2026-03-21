@@ -49,7 +49,7 @@ export default function SettingsPage() {
 
   return (
     <div className="settings-container">
-      <h1>⚙️ Settings</h1>
+      <h1>⛭ Settings</h1>
 
       {message && (
         <div
@@ -62,7 +62,7 @@ export default function SettingsPage() {
 
       {/* Profile */}
       <div className="settings-section">
-        <h2>👤 Profile</h2>
+        <h2>❖ Profile</h2>
         <div className="settings-row">
           <label>Username</label>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -81,11 +81,11 @@ export default function SettingsPage() {
 
       {/* Ollama Status */}
       <div className="settings-section">
-        <h2>🧠 Oracle (AI Engine)</h2>
+        <h2>◆ Oracle (AI Engine)</h2>
         <div className="settings-row">
           <label>Ollama Status</label>
           <span style={{ color: ollamaStatus?.available ? "var(--green)" : "var(--red)" }}>
-            {ollamaStatus?.available ? "🟢 Connected" : "🔴 Not Available"}
+            {ollamaStatus?.available ? "● Connected" : "○ Not Available"}
           </span>
         </div>
         {ollamaStatus?.available && (
@@ -130,13 +130,13 @@ export default function SettingsPage() {
           style={{ marginTop: 8 }}
           onClick={() => checkOllamaStatus().then(setOllamaStatus)}
         >
-          🔄 Refresh Status
+          ↻ Refresh Status
         </button>
       </div>
 
       {/* Oracle Access Control */}
       <div className="settings-section">
-        <h2>🔐 Oracle Access Control</h2>
+        <h2>❖ Oracle Access Control</h2>
         <p
           style={{
             color: "var(--text-secondary)",
@@ -152,7 +152,7 @@ export default function SettingsPage() {
           {accessList.map((user) => (
             <div className="access-item" key={user.username}>
               <span className="username">{user.username}</span>
-              {user.isAdmin && <span className="admin-badge">👑 Admin</span>}
+              {user.isAdmin && <span className="admin-badge">♔ Admin</span>}
               {userIsAdmin && !user.isAdmin && (
                 <button
                   className="remove-btn"
@@ -184,7 +184,7 @@ export default function SettingsPage() {
 
       {/* About */}
       <div className="settings-section">
-        <h2>🏛️ About Strategos</h2>
+        <h2>▒ About Strategos</h2>
         <div style={{ color: "var(--text-secondary)", fontSize: "0.85rem", lineHeight: 1.8 }}>
           <p>
             <strong style={{ color: "var(--gold-primary)" }}>Strategos</strong>{" "}
@@ -195,7 +195,7 @@ export default function SettingsPage() {
             of modern AI. Play locally, challenge the Oracle, or compete online.
           </p>
           <p style={{ marginTop: 8, color: "var(--text-dim)" }}>
-            Version 1.0.0 • Made with ♟️ and 🧠
+            Version 1.0.0 • Made with ♔ and ◆
           </p>
         </div>
       </div>

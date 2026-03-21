@@ -1,21 +1,21 @@
 "use client";
-import { useState, useEffect, useContext, useCallback, useRef } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect, useContext, useCallback, useRef, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Chess } from "chess.js";
 import { UserContext } from "@/app/layout";
 import ChessBoard from "@/components/ChessBoard";
 import MoveHistory from "@/components/MoveHistory";
 import CoachPanel from "@/components/CoachPanel";
 
-export default function LobbyPage() {
+function LobbyContent() {
   const { username } = useContext(UserContext);
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const peerParam = searchParams.get("peer"); // If present, we are joining someone's game
 
   const [screen, setScreen] = useState("lobby"); // lobby | game
-  const [rooms, setRooms] = useState([]);
-  const [joinCode, setJoinCode] = useState("");
+  const [myPeerId, setMyPeerId] = useState("");
   const [currentRoom, setCurrentRoom] = useState(null);
-  const [socket, setSocket] = useState(null);
   const [game, setGame] = useState(new Chess());
   const [moveHistory, setMoveHistory] = useState([]);
   const [lastMove, setLastMove] = useState(null);
@@ -23,117 +23,189 @@ export default function LobbyPage() {
   const [gameOver, setGameOver] = useState(null);
   const [chatMessages, setChatMessages] = useState([]);
   const [chatInput, setChatInput] = useState("");
-  const [serverUrl, setServerUrl] = useState("");
-  const [connected, setConnected] = useState(false);
   const [waiting, setWaiting] = useState(false);
   const [error, setError] = useState("");
-  const wsRef = useRef(null);
+  const [connected, setConnected] = useState(false);
+  const [opponentName, setOpponentName] = useState("Opponent");
+  const [joinCode, setJoinCode] = useState("");
+  const [linkCopied, setLinkCopied] = useState(false);
+  const peerRef = useRef(null);
+  const connRef = useRef(null);
 
-  const connectToServer = useCallback((url) => {
-    try {
-      const ws = new WebSocket(url);
+  // Initialize peer connection
+  const initPeer = useCallback(() => {
+    return new Promise((resolve, reject) => {
+      import("peerjs").then(({ default: Peer }) => {
+        const peer = new Peer();
 
-      ws.onopen = () => {
-        setConnected(true);
-        setError("");
-        ws.send(JSON.stringify({ type: "set_username", username }));
-      };
+        peer.on("open", (id) => {
+          setMyPeerId(id);
+          peerRef.current = peer;
+          resolve(peer);
+        });
 
-      ws.onmessage = (event) => {
-        const data = JSON.parse(event.data);
+        peer.on("error", (err) => {
+          console.error("Peer error:", err);
+          setError(`Connection error: ${err.type}`);
+          reject(err);
+        });
 
-        switch (data.type) {
-          case "room_list":
-            setRooms(data.rooms || []);
-            break;
-
-          case "room_created":
-            setCurrentRoom(data.room);
-            setPlayerColor(data.color);
-            setWaiting(true);
-            setScreen("game");
-            break;
-
-          case "room_joined":
-            setCurrentRoom(data.room);
-            setPlayerColor(data.color);
-            setGame(new Chess());
-            setMoveHistory([]);
-            setLastMove(null);
-            setGameOver(null);
-            setWaiting(false);
-            setScreen("game");
-            break;
-
-          case "game_start":
-            setGame(new Chess());
-            setMoveHistory([]);
-            setLastMove(null);
-            setGameOver(null);
-            setWaiting(false);
-            break;
-
-          case "move":
-            const g = new Chess();
-            data.history.forEach((m) => g.move(m));
-            setGame(new Chess(g.fen()));
-            setMoveHistory(g.history());
-            if (data.lastMove) setLastMove(data.lastMove);
-            if (g.isGameOver()) {
-              if (g.isCheckmate()) {
-                const winner = g.turn() === "w" ? "Black" : "White";
-                setGameOver({ type: "checkmate", message: `Checkmate! ${winner} wins!` });
-              } else {
-                setGameOver({ type: "draw", message: "Draw!" });
-              }
-            }
-            break;
-
-          case "chat":
-            setChatMessages((prev) => [...prev, { author: data.author, text: data.text }]);
-            break;
-
-          case "opponent_disconnected":
-            setGameOver({ type: "disconnect", message: "Opponent disconnected." });
-            break;
-
-          case "error":
-            setError(data.message);
-            break;
-        }
-      };
-
-      ws.onclose = () => {
-        setConnected(false);
-        setWaiting(false);
-      };
-
-      ws.onerror = () => {
-        setError("Connection failed. Check the server URL.");
-        setConnected(false);
-      };
-
-      wsRef.current = ws;
-      setSocket(ws);
-
-    } catch (err) {
-      setError("Invalid server URL");
-    }
-  }, [username]);
-
-  useEffect(() => {
-    return () => {
-      wsRef.current?.close();
-    };
+        peer.on("disconnected", () => {
+          setConnected(false);
+        });
+      });
+    });
   }, []);
 
-  const createRoom = () => {
-    wsRef.current?.send(JSON.stringify({ type: "create_room" }));
-  };
+  // Setup data channel handlers
+  const setupConnection = useCallback((conn, isHost) => {
+    connRef.current = conn;
 
-  const joinRoom = (code) => {
-    wsRef.current?.send(JSON.stringify({ type: "join_room", code: code || joinCode }));
-  };
+    const sendIdentity = () => {
+      conn.send({ type: "username", name: username || "Guest" });
+    };
+
+    conn.on("open", () => {
+      setConnected(true);
+      setWaiting(false);
+      setScreen("game");
+
+      // Send our username
+      sendIdentity();
+
+      // If host, send game start signal with color assignment
+      if (isHost) {
+        conn.send({ type: "game_start", hostColor: "w" });
+        setPlayerColor("w");
+      }
+    });
+
+    // If connection is already open (race condition), send identity immediately
+    if (conn.open) {
+      setConnected(true);
+      setWaiting(false);
+      setScreen("game");
+      sendIdentity();
+      if (isHost) {
+        conn.send({ type: "game_start", hostColor: "w" });
+        setPlayerColor("w");
+      }
+    }
+
+    conn.on("data", (data) => {
+      switch (data.type) {
+        case "username":
+          setOpponentName(data.name);
+          break;
+
+        case "game_start":
+          // Guest receives color assignment (opposite of host)
+          setPlayerColor(data.hostColor === "w" ? "b" : "w");
+          setGame(new Chess());
+          setMoveHistory([]);
+          setLastMove(null);
+          setGameOver(null);
+          // Re-send our identity to guarantee the host gets it
+          conn.send({ type: "username", name: username || "Guest" });
+          break;
+
+        case "move":
+          const g = new Chess();
+          data.history.forEach((m) => g.move(m));
+          setGame(new Chess(g.fen()));
+          setMoveHistory(g.history());
+          if (data.lastMove) setLastMove(data.lastMove);
+          if (g.isGameOver()) {
+            if (g.isCheckmate()) {
+              const winner = g.turn() === "w" ? "Black" : "White";
+              setGameOver({ type: "checkmate", message: `Checkmate! ${winner} wins!` });
+            } else {
+              setGameOver({ type: "draw", message: "Draw!" });
+            }
+          }
+          break;
+
+        case "chat":
+          setChatMessages((prev) => [...prev, { author: data.author, text: data.text }]);
+          break;
+
+        case "resign":
+          setGameOver({ type: "resign", message: `${data.player} resigned!` });
+          break;
+      }
+    });
+
+    conn.on("close", () => {
+      setConnected(false);
+      if (!gameOver) {
+        setGameOver({ type: "disconnect", message: "Opponent disconnected." });
+      }
+    });
+
+    conn.on("error", (err) => {
+      setError(`Connection error: ${err}`);
+    });
+  }, [username, gameOver]);
+
+  // Host: Create a room and wait for someone to join
+  const createRoom = useCallback(async () => {
+    try {
+      setError("");
+      const peer = await initPeer();
+
+      setCurrentRoom({ code: peer.id?.slice(0, 8)?.toUpperCase() || "ROOM" });
+      setWaiting(true);
+      setScreen("game");
+
+      // Listen for incoming connections
+      peer.on("connection", (conn) => {
+        setupConnection(conn, true);
+      });
+    } catch {
+      setError("Failed to create room. Please try again.");
+    }
+  }, [initPeer, setupConnection]);
+
+  // Guest: Join a host's room
+  const joinRoom = useCallback(async (rawInput) => {
+    if (!rawInput) {
+      setError("Please enter a valid room code.");
+      return;
+    }
+    // If user pasted a full invite link, extract the peer ID from it
+    let hostPeerId = rawInput.trim();
+    try {
+      const url = new URL(hostPeerId);
+      const extracted = url.searchParams.get("peer");
+      if (extracted) hostPeerId = extracted;
+    } catch {
+      // Not a URL, use as-is (it's a raw peer ID)
+    }
+    try {
+      setError("");
+      const peer = await initPeer();
+      const conn = peer.connect(hostPeerId);
+      setupConnection(conn, false);
+      setCurrentRoom({ code: hostPeerId.slice(0, 8).toUpperCase() });
+    } catch {
+      setError("Failed to join room. Please try again.");
+    }
+  }, [initPeer, setupConnection]);
+
+  // Auto-join if URL has ?peer= parameter
+  useEffect(() => {
+    if (peerParam && !connected && !connRef.current) {
+      joinRoom(peerParam);
+    }
+  }, [peerParam, connected, joinRoom]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      connRef.current?.close();
+      peerRef.current?.destroy();
+    };
+  }, []);
 
   const handleMove = useCallback((moveObj) => {
     const gameCopy = new Chess();
@@ -143,14 +215,13 @@ export default function LobbyPage() {
       const result = gameCopy.move(moveObj);
       if (!result) return false;
 
-      wsRef.current?.send(
-        JSON.stringify({
-          type: "move",
-          move: moveObj,
-          history: gameCopy.history(),
-          lastMove: { from: result.from, to: result.to },
-        })
-      );
+      // Send move to opponent
+      connRef.current?.send({
+        type: "move",
+        move: moveObj,
+        history: gameCopy.history(),
+        lastMove: { from: result.from, to: result.to },
+      });
 
       setGame(new Chess(gameCopy.fen()));
       setMoveHistory(gameCopy.history());
@@ -173,9 +244,19 @@ export default function LobbyPage() {
 
   const sendChat = () => {
     if (!chatInput.trim()) return;
-    wsRef.current?.send(JSON.stringify({ type: "chat", text: chatInput.trim() }));
-    setChatMessages((prev) => [...prev, { author: username, text: chatInput.trim() }]);
+    connRef.current?.send({ type: "chat", author: username || "You", text: chatInput.trim() });
+    setChatMessages((prev) => [...prev, { author: username || "You", text: chatInput.trim() }]);
     setChatInput("");
+  };
+
+  const copyInviteLink = () => {
+    const peerId = peerRef.current?.id;
+    if (peerId) {
+      const link = `${window.location.origin}/lobby?peer=${peerId}`;
+      navigator.clipboard?.writeText(link);
+      setLinkCopied(true);
+      setTimeout(() => setLinkCopied(false), 2000);
+    }
   };
 
   // Lobby screen
@@ -183,97 +264,45 @@ export default function LobbyPage() {
     return (
       <div className="lobby-container">
         <h1>🌐 Online Arena</h1>
-        <p>Connect to a server, create a room, or join an existing game.</p>
+        <p>Play chess with a friend — no server needed! Create a room and share your invite link.</p>
 
-        {!connected ? (
-          <div className="panel" style={{ padding: 24, maxWidth: 500 }}>
-            <div className="panel-header" style={{ border: "none", padding: 0, marginBottom: 16 }}>
-              <span className="panel-icon">🖧</span>
-              Connect to Server
-            </div>
-            <div className="room-input-group" style={{ marginBottom: 12 }}>
-              <input
-                type="text"
-                placeholder="ws://localhost:3001 or wss://your-server.com"
-                value={serverUrl}
-                onChange={(e) => setServerUrl(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && connectToServer(serverUrl)}
-                style={{ flex: 1, textTransform: "none", letterSpacing: "normal" }}
-              />
-              <button className="btn btn-primary btn-sm" onClick={() => connectToServer(serverUrl)}>
-                Connect
-              </button>
-            </div>
-            {error && (
-              <div style={{ color: "var(--red)", fontSize: "0.85rem", marginTop: 8 }}>
-                ⚠️ {error}
-              </div>
-            )}
-            <div style={{ color: "var(--text-dim)", fontSize: "0.8rem", marginTop: 12 }}>
-              💡 Run the Strategos server first, or connect to a deployed instance.
-            </div>
+        <div className="lobby-actions" style={{ marginTop: 24 }}>
+          <button className="btn btn-primary btn-lg" onClick={createRoom} style={{ width: "100%", padding: "16px" }}>
+            ✦ Create Room & Get Invite Link
+          </button>
+        </div>
+
+        <div style={{ margin: "24px 0", textAlign: "center", color: "var(--text-dim)", fontSize: "0.85rem" }}>
+          — or join a friend&apos;s game —
+        </div>
+
+        <div className="panel" style={{ padding: 20 }}>
+          <div className="panel-header" style={{ border: "none", padding: 0, marginBottom: 12 }}>
+            <span className="panel-icon">⧉</span>
+            Join with Room Code
           </div>
-        ) : (
-          <>
-            <div style={{ color: "var(--green)", fontSize: "0.85rem", marginBottom: 16, display: "flex", alignItems: "center", gap: 6 }}>
-              <span style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--green)", display: "inline-block" }}></span>
-              Connected to {serverUrl}
-            </div>
+          <div className="room-input-group">
+            <input
+              type="text"
+              placeholder="Paste Peer ID from invite link"
+              value={joinCode}
+              onChange={(e) => setJoinCode(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && joinRoom(joinCode)}
+              style={{ flex: 1, textTransform: "none", letterSpacing: "normal" }}
+            />
+            <button className="btn btn-secondary btn-sm" onClick={() => joinRoom(joinCode)}>
+              Join
+            </button>
+          </div>
+          <div style={{ color: "var(--text-dim)", fontSize: "0.8rem", marginTop: 8 }}>
+            ▹ Ask your friend to send you their invite link — it will auto-join!
+          </div>
+        </div>
 
-            <div className="lobby-actions">
-              <button className="btn btn-primary" onClick={createRoom}>
-                ➕ Create Room
-              </button>
-              <div className="room-input-group">
-                <input
-                  type="text"
-                  placeholder="Room code"
-                  value={joinCode}
-                  onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
-                  maxLength={6}
-                />
-                <button className="btn btn-secondary btn-sm" onClick={() => joinRoom()}>
-                  Join
-                </button>
-              </div>
-            </div>
-
-            {error && (
-              <div style={{ color: "var(--red)", fontSize: "0.85rem", marginBottom: 12 }}>
-                ⚠️ {error}
-              </div>
-            )}
-
-            <h2 style={{ fontFamily: "'Cinzel', serif", fontSize: "1.1rem", color: "var(--gold-primary)", marginBottom: 12 }}>
-              Available Rooms
-            </h2>
-            <div className="rooms-list">
-              {rooms.length === 0 && (
-                <div style={{ color: "var(--text-dim)", textAlign: "center", padding: 24 }}>
-                  No rooms available. Create one to start!
-                </div>
-              )}
-              {rooms.map((room) => (
-                <div className="room-card" key={room.code}>
-                  <span className="room-code">{room.code}</span>
-                  <span className="room-host">Host: {room.host}</span>
-                  <span className="room-status">
-                    <span className="dot"></span>
-                    {room.players}/2
-                  </span>
-                  {room.players < 2 && (
-                    <button
-                      className="btn btn-primary btn-sm"
-                      style={{ marginLeft: 12 }}
-                      onClick={() => joinRoom(room.code)}
-                    >
-                      Join
-                    </button>
-                  )}
-                </div>
-              ))}
-            </div>
-          </>
+        {error && (
+          <div style={{ color: "var(--red)", fontSize: "0.85rem", marginTop: 12, textAlign: "center" }}>
+            ⚠️ {error}
+          </div>
         )}
       </div>
     );
@@ -290,7 +319,7 @@ export default function LobbyPage() {
               {playerColor === "w" ? "♚" : "♔"}
             </div>
             <div>
-              <div className="player-name">Opponent</div>
+              <div className="player-name">{opponentName}</div>
               <div className="player-rating">Online</div>
             </div>
             {game.turn() !== playerColor && !gameOver && (
@@ -299,12 +328,12 @@ export default function LobbyPage() {
           </div>
         </div>
 
-        <CoachPanel game={game} moveHistory={moveHistory} />
+        <CoachPanel game={game} moveHistory={moveHistory} playerColor={playerColor} />
 
         {/* Chat */}
         <div className="panel">
           <div className="panel-header">
-            <span className="panel-icon">💬</span>
+            <span className="panel-icon">≡</span>
             Chat
           </div>
           <div className="chat-container">
@@ -334,19 +363,28 @@ export default function LobbyPage() {
       <div>
         {waiting && (
           <div className="status-bar" style={{ marginBottom: 12 }}>
-            <span className="spinner" style={{ marginRight: 8 }}></span>
-            Waiting for opponent to join...
-            <span style={{ marginLeft: 12, fontSize: "0.85rem", color: "var(--text-secondary)" }}>
-              Room: <strong>{currentRoom?.code}</strong>
-            </span>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', flexWrap: 'wrap', gap: '8px' }}>
+              <div>
+                <span className="spinner" style={{ marginRight: 8, verticalAlign: 'middle' }}></span>
+                <span style={{ verticalAlign: 'middle' }}>Waiting for opponent...</span>
+              </div>
+              <button
+                className={`btn ${linkCopied ? 'btn-secondary' : 'btn-primary'} btn-sm`}
+                onClick={copyInviteLink}
+              >
+                {linkCopied ? '✓ Link Copied!' : '⧉ Copy Invite Link'}
+              </button>
+            </div>
           </div>
         )}
 
         {currentRoom && !waiting && (
           <div className="status-bar" style={{ marginBottom: 12 }}>
-            Room: <strong style={{ marginLeft: 4 }}>{currentRoom.code}</strong>
+            ● Connected
             <span style={{ margin: "0 8px", color: "var(--text-dim)" }}>|</span>
             You play as {playerColor === "w" ? "White ♔" : "Black ♚"}
+            <span style={{ margin: "0 8px", color: "var(--text-dim)" }}>|</span>
+            vs <strong style={{ marginLeft: 4 }}>{opponentName}</strong>
           </div>
         )}
 
@@ -379,16 +417,17 @@ export default function LobbyPage() {
         <MoveHistory history={moveHistory} currentMoveIndex={moveHistory.length - 1} />
       </div>
 
-      {/* Game Over */}
       {gameOver && (
         <div className="game-over-overlay">
           <div className="game-over-modal">
             <div className="result-icon">
-              {gameOver.type === "checkmate" ? "👑" :
-               gameOver.type === "disconnect" ? "📡" : "🤝"}
+              {gameOver.type === "checkmate" ? "♛" :
+               gameOver.type === "disconnect" ? "⚠" :
+               gameOver.type === "resign" ? "⚐" : "⚖"}
             </div>
             <h2>{gameOver.type === "checkmate" ? "Checkmate!" :
-                 gameOver.type === "disconnect" ? "Disconnected" : "Draw"}</h2>
+                 gameOver.type === "disconnect" ? "Disconnected" :
+                 gameOver.type === "resign" ? "Resignation" : "Draw"}</h2>
             <p className="result-detail">{gameOver.message}</p>
             <button className="btn btn-primary" onClick={() => {
               setScreen("lobby");
@@ -396,12 +435,31 @@ export default function LobbyPage() {
               setCurrentRoom(null);
               setGame(new Chess());
               setMoveHistory([]);
+              setConnected(false);
+              setWaiting(false);
+              connRef.current?.close();
+              peerRef.current?.destroy();
+              peerRef.current = null;
+              connRef.current = null;
+              window.history.replaceState(null, '', '/lobby');
             }}>
-              🏛️ Return to Lobby
+              ⌂ Return to Lobby
             </button>
           </div>
         </div>
       )}
     </div>
+  );
+}
+
+export default function LobbyPage() {
+  return (
+    <Suspense fallback={
+      <div style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "calc(100vh - 64px)" }}>
+        <div className="spinner" style={{ width: 32, height: 32 }}></div>
+      </div>
+    }>
+      <LobbyContent />
+    </Suspense>
   );
 }

@@ -31,10 +31,10 @@ export default function RootLayout({ children }) {
   };
 
   const navItems = [
-    { href: "/", label: "Home", icon: "🏛️" },
-    { href: "/play", label: "Play", icon: "♟️" },
-    { href: "/lobby", label: "Online", icon: "🌐" },
-    { href: "/settings", label: "Settings", icon: "⚙️" },
+    { href: "/", label: "Home", icon: "⚜" },
+    { href: "/play", label: "Play", icon: "⚔" },
+    { href: "/lobby", label: "Online", icon: "⛓" },
+    { href: "/settings", label: "Settings", icon: "⛭" },
   ];
 
   return (
@@ -106,7 +106,7 @@ export default function RootLayout({ children }) {
                       </button>
                     )}
                     <button className="btn btn-primary" onClick={handleSetUsername}>
-                      ⚔️ Enter Arena
+                      ⚔ Enter Arena
                     </button>
                   </div>
                 </div>

@@ -1,4 +1,5 @@
 "use client";
+import { useState, useContext, useEffect, useRef, useCallback } from "react";
 import { UserContext } from "@/app/layout";
 import { hasOracleAccess } from "@/lib/accessControl";
 import { askOracle, checkOllamaStatus } from "@/lib/ollamaClient";
@@ -11,24 +12,25 @@ export default function CoachPanel({ game, moveHistory, playerColor = "w", onSug
   const [suggestion, setSuggestion] = useState(null);
   const [error, setError] = useState(null);
   const [ollamaStatus, setOllamaStatus] = useState(null);
+  const [autoCoach, setAutoCoach] = useState(false);
+  const lastEvaluatedFen = useRef(null);
 
   const hasAccess = hasOracleAccess(username);
 
-  if (!hasAccess) return null;
-
-  const handleAskOracle = async () => {
+  const handleAskOracle = useCallback(async () => {
     setLoading(true);
     setError(null);
     setSuggestion(null);
 
     try {
+      lastEvaluatedFen.current = game.fen();
       // Check Ollama status first
       const status = await checkOllamaStatus();
       setOllamaStatus(status);
 
       const engineMoveObj = new Chess();
       engineMoveObj.loadPgn(game.pgn());
-      const engineMove = getComputerMove(game, "strategist");
+      const engineMove = await getComputerMove(game, "strategist");
 
       if (!status.available || !status.hasQwen) {
         setSuggestion({
@@ -69,31 +71,56 @@ export default function CoachPanel({ game, moveHistory, playerColor = "w", onSug
     } finally {
       setLoading(false);
     }
-  };
+  }, [game, moveHistory, playerColor, onSuggest]);
+
+  // Hook to automatically trigger if autoCoach is enabled and it's playerColor's turn
+  useEffect(() => {
+    if (autoCoach && game.turn() === playerColor && !loading && !game.isGameOver()) {
+      if (lastEvaluatedFen.current !== game.fen()) {
+        handleAskOracle();
+      }
+    }
+  }, [autoCoach, game, playerColor, loading, handleAskOracle]);
+
+  if (!hasAccess) return null;
 
   return (
     <div className="panel coach-panel">
       <div className="panel-header">
-        <span className="panel-icon">🏛️</span>
+        <span className="panel-icon">⚜</span>
         Oracle&apos;s Wisdom
       </div>
       <div className="panel-body">
-        <button
-          className="coach-btn"
-          onClick={handleAskOracle}
-          disabled={loading || game.isGameOver()}
-        >
-          {loading ? (
-            <>
-              <span className="spinner" style={{ display: "inline-block" }}></span>
-              Consulting the Oracle...
-            </>
-          ) : (
-            <>
-              🔮 Ask the Oracle
-            </>
-          )}
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+          <button
+            className="coach-btn"
+            style={{ flex: 1, marginRight: '16px', marginBottom: 0 }}
+            onClick={handleAskOracle}
+            disabled={loading || game.isGameOver()}
+          >
+            {loading ? (
+              <>
+                <span className="spinner" style={{ display: "inline-block" }}></span>
+                Consulting...
+              </>
+            ) : (
+              <>
+                ◆ Ask Oracle
+              </>
+            )}
+          </button>
+          
+          <div style={{ display: 'flex', alignItems: 'center', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+            <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', gap: '6px' }}>
+              <input 
+                type="checkbox" 
+                checked={autoCoach} 
+                onChange={(e) => setAutoCoach(e.target.checked)} 
+              />
+              Auto-Analyze
+            </label>
+          </div>
+        </div>
 
         {error && (
           <div
@@ -107,7 +134,7 @@ export default function CoachPanel({ game, moveHistory, playerColor = "w", onSug
         {suggestion && (
           <div className="coach-suggestion">
             <span className="suggested-move">
-              ♟️ Suggested: {suggestion.move || "Could not determine a move"}
+              ⬥ Suggested: {suggestion.move || "Could not determine a move"}
             </span>
             {suggestion.explanation}
           </div>

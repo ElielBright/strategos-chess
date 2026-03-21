@@ -14,30 +14,30 @@ export default function HomePage() {
 
       <div className="hero-actions">
         <Link href="/play" className="btn btn-primary btn-lg">
-          <span className="btn-icon">⚔️</span>
+          <span className="btn-icon">⚔</span>
           Start Game
         </Link>
         <Link href="/lobby" className="btn btn-secondary btn-lg">
-          <span className="btn-icon">🌐</span>
+          <span className="btn-icon">⛓</span>
           Play Online
         </Link>
       </div>
 
       <div className="modes-grid">
         <Link href="/play?mode=local" className="mode-card">
-          <span className="mode-icon">👥</span>
+          <span className="mode-icon">⚔</span>
           <h3>Local Match</h3>
           <p>Two players, one board. Challenge a friend sitting beside you in a classic duel of minds.</p>
         </Link>
 
         <Link href="/play?mode=computer" className="mode-card">
-          <span className="mode-icon">🤖</span>
+          <span className="mode-icon">⛊</span>
           <h3>Vs Computer</h3>
           <p>Face the engine at four difficulty levels — from Novice to the all-knowing Oracle.</p>
         </Link>
 
         <Link href="/lobby" className="mode-card">
-          <span className="mode-icon">🌍</span>
+          <span className="mode-icon">⛓</span>
           <h3>Online Arena</h3>
           <p>Create or join a game room. Play anyone, anywhere with real-time sync.</p>
         </Link>

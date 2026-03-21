@@ -16,7 +16,7 @@ export default function MoveHistory({ history, onGoToMove, currentMoveIndex }) {
   return (
     <div className="panel">
       <div className="panel-header">
-        <span className="panel-icon">📜</span>
+        <span className="panel-icon">≡</span>
         Moves
       </div>
       <div className="move-history">

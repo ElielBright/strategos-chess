@@ -1,11 +1,8 @@
 "use client";
 import { useState, useCallback, useRef, useEffect } from "react";
+import { getPieceSVG } from "@/components/ChessPieces";
 
-// Unicode chess pieces
-const PIECES = {
-  wk: "♔", wq: "♕", wr: "♖", wb: "♗", wn: "♘", wp: "♙",
-  bk: "♚", bq: "♛", br: "♜", bb: "♝", bn: "♞", bp: "♟",
-};
+
 
 const FILES = ["a", "b", "c", "d", "e", "f", "g", "h"];
 const RANKS = ["8", "7", "6", "5", "4", "3", "2", "1"];
@@ -254,7 +251,7 @@ export default function ChessBoard({
             {/* Piece */}
             {piece && !isDragging && (
               <span className={`piece piece-${piece.color}`}>
-                {PIECES[piece.color + piece.type]}
+                {getPieceSVG(piece.color, piece.type)}
               </span>
             )}
           </div>
@@ -276,10 +273,11 @@ export default function ChessBoard({
           style={{
             left: dragPos.x - 28,
             top: dragPos.y - 28,
-            fontSize: "2.8em",
+            width: '56px',
+            height: '56px',
           }}
         >
-          {PIECES[game.get(dragPiece).color + game.get(dragPiece).type]}
+          {getPieceSVG(game.get(dragPiece).color, game.get(dragPiece).type)}
         </span>
       )}
 
@@ -299,7 +297,7 @@ export default function ChessBoard({
               className={`promotion-option piece-${turn}`}
               onClick={() => handlePromotion(p)}
             >
-              {PIECES[(turn) + p]}
+              {getPieceSVG(turn, p)}
             </div>
           ))}
         </div>

@@ -193,13 +193,16 @@ function getScholarMove(game) {
 /**
  * STRATEGIST (Hard) — Minimax with alpha-beta, depth 3
  */
-function getStrategistMove(game) {
+async function getStrategistMove(game) {
   const moves = orderMoves(game, game.moves());
 
   let bestMove = moves[0];
   let bestScore = -Infinity;
 
   for (const move of moves) {
+    // Yield to the main thread to prevent "Page Unresponsive" browser freezing
+    await new Promise(resolve => setTimeout(resolve, 0));
+
     game.move(move);
     const score = -minimax(game, 3, -Infinity, Infinity, false);
     game.undo();
@@ -216,18 +219,16 @@ function getStrategistMove(game) {
 /**
  * Get computer move based on difficulty level
  */
-export function getComputerMove(game, difficulty) {
+export async function getComputerMove(game, difficulty) {
   switch (difficulty) {
     case "novice":
       return getNoviceMove(game);
     case "scholar":
       return getScholarMove(game);
     case "strategist":
-      return getStrategistMove(game);
+      return await getStrategistMove(game);
     case "oracle":
-      // Oracle uses strategist as fallback; the actual Oracle
-      // move is handled by the coach/ollama integration in the component
-      return getStrategistMove(game);
+      return await getStrategistMove(game);
     default:
       return getNoviceMove(game);
   }
